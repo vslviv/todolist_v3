@@ -30,18 +30,16 @@ app.set('view engine', 'ejs');
 
 let title = "Todolist";
 let header = "Today";
-let listItems = [{name: "Buy milk"}, {name: "Clean house"}, {name: "Learn to code"}];
 
 //Setup Database
 
 const itemsSchema = new mongoose.Schema({
-  name: String,
-  items: Array
+  name: String
 });
 
 const listSchema = new mongoose.Schema({
   name: String,
-  items: itemsSchema
+  items: [itemsSchema]
 });
 
 const List = mongoose.model("List", listSchema);
@@ -54,7 +52,6 @@ app.get('/', (req, res) => {
   Item.find({}, function(err, itemsFound) {
     if ( !err ) {
       res.render("list", {
-        title: title,
         header: header,
         listItems: itemsFound
       });
@@ -63,27 +60,63 @@ app.get('/', (req, res) => {
 
 });
 
-app.get('/:listParam', (req, res) => {
-  const listParam = req.params.listParam;
-  console.log(listParam);
-  const list = new List({
-    name: listParam
+app.get('/:customListName', (req, res) => {
+  const customListName = req.params.customListName;
+  console.log(customListName);
+
+  if (req.params.customListName === "favicon.ico") return;
+
+  List.findOne({name: customListName}, (err, foundList) => {
+    if (!err) {
+      if (!foundList) {
+        const list = new List({
+          name: customListName
+        });
+        list.save();
+        res.redirect("/" + customListName);
+      } else {
+        console.log(foundList.items);
+        res.render("list", {
+          header: foundList.name,
+          listItems: foundList.items
+        });
+      }
+    }
   });
-  list.save();
+
+
 });
 
 app.post('/', (req, res) => {
 
-  const textField = req.body.textField;
+  const itemName = req.body.newItem;
+  const listName = req.body.list;
 
-  if (textField !== "") {
-    const item = new Item({
-      name: textField
+
+  // if (textField !== "") {
+  //   const item = new Item({
+  //     name: textField
+  //   });
+  // }
+
+  const item = new Item({
+    name: itemName
+  });
+
+  console.log(item);
+
+  if (listName === "Today") {
+    item.save(function() {
+      res.redirect("/");
     });
-    item.save();
+  } else {
+    List.findOne({name: listName}, (err, foundList) => {
+      foundList.items.push(item);
+      foundList.save(function() {
+        res.redirect("/" + listName);
+      });
+    });
   }
-
-  res.redirect("/");
 
 });
 
