@@ -1,7 +1,7 @@
 <%-include("header")-%>
 
   <div class="tab">
-    <h1><%=header%></h1>
+    <h1><%=title%></h1>
   </div>
 
   <div class="box">
@@ -10,6 +10,7 @@
         <div class="item">
           <form action="/delete" method="post">
             <input type="checkbox" name="checkbox" value="<%=item._id%>" onChange="this.form.submit()">
+            <input type="hidden" name="listName" value="<%=title%>">
           </form>
           <p><%=item.name%></p>
         </div>
@@ -18,7 +19,7 @@
 
     <form class="item" action="/" method="post">
       <input class="newItem" type="text" name="newItem" placeholder="New to-do" autofocus>
-      <button class="btn btn-primary btn-lg custom-btn" type="submit" name="list" value="<%=header%>">
+      <button class="btn btn-primary btn-lg custom-btn" type="submit" name="list" value="<%=title%>">
         <i class="fas fa-plus"></i>
       </button>
     </form>

@@ -1,6 +1,7 @@
 const express = require('express');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
+const _ = require('lodash');
 
 const app = express();
 
@@ -13,7 +14,8 @@ app.use(express.urlencoded({
 
 mongoose.connect('mongodb+srv://admin-yurii:dfvgsh2005@cluster0.dzap0.mongodb.net/todoDB?retryWrites=true&w=majority', {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
+  useFindAndModify: false
 });
 
 //Check errors when connect to database
@@ -28,8 +30,7 @@ app.set('view engine', 'ejs');
 
 //Setup
 
-let title = "Todolist";
-let header = "Today";
+let title = "Today";
 
 //Setup Database
 
@@ -52,7 +53,7 @@ app.get('/', (req, res) => {
   Item.find({}, function(err, itemsFound) {
     if ( !err ) {
       res.render("list", {
-        header: header,
+        title: title,
         listItems: itemsFound
       });
     }
@@ -61,8 +62,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/:customListName', (req, res) => {
-  const customListName = req.params.customListName;
-  console.log(customListName);
+  const customListName = _.capitalize(req.params.customListName);
 
   if (req.params.customListName === "favicon.ico") return;
 
@@ -75,9 +75,8 @@ app.get('/:customListName', (req, res) => {
         list.save();
         res.redirect("/" + customListName);
       } else {
-        console.log(foundList.items);
         res.render("list", {
-          header: foundList.name,
+          title: foundList.name,
           listItems: foundList.items
         });
       }
@@ -92,18 +91,9 @@ app.post('/', (req, res) => {
   const itemName = req.body.newItem;
   const listName = req.body.list;
 
-
-  // if (textField !== "") {
-  //   const item = new Item({
-  //     name: textField
-  //   });
-  // }
-
   const item = new Item({
     name: itemName
   });
-
-  console.log(item);
 
   if (listName === "Today") {
     item.save(function() {
@@ -123,14 +113,22 @@ app.post('/', (req, res) => {
 app.post('/delete', (req, res) => {
 
   const itemId = req.body.checkbox;
+  const listName = req.body.listName;
 
-  Item.findByIdAndDelete(itemId, (err) => {
-    if (!err) {
-      console.log("Item was succesfylly deleted");
-    }
-  });
-
-  res.redirect("/");
+  if (listName === "Today") {
+    Item.findByIdAndDelete(itemId, (err) => {
+      if (!err) {
+        console.log("Item was succesfylly deleted");
+        res.redirect("/");
+      }
+    });
+  } else {
+    List.findOneAndUpdate({name: listName}, {$pull: {items: {_id: itemId}}}, (err, foundList) => {
+      if (!err) {
+        res.redirect("/" + listName);
+      }
+    });
+  }
 
 });
 
