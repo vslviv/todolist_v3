@@ -28,10 +28,6 @@ db.once('open', function() {
 
 app.set('view engine', 'ejs');
 
-//Setup
-
-let title = "Today";
-
 //Setup Database
 
 const itemsSchema = new mongoose.Schema({
@@ -48,14 +44,24 @@ const Item = mongoose.model("Item", itemsSchema);
 
 //Routes
 
+app.get('/favicon.ico', (req, res) => res.status(204));
+
 app.get('/', (req, res) => {
 
-  Item.find({}, function(err, itemsFound) {
-    if ( !err ) {
-      res.render("list", {
-        title: title,
-        listItems: itemsFound
-      });
+  List.findOne({name: "Today"}, (err, foundList) => {
+    if (!err) {
+      if (!foundList) {
+        const list = new List({
+          name: "Today"
+        });
+        list.save();
+        res.redirect("/");
+      } else {
+        res.render("list", {
+          title: foundList.name,
+          listItems: foundList.items
+        });
+      }
     }
   });
 
@@ -72,8 +78,11 @@ app.get('/:customListName', (req, res) => {
         const list = new List({
           name: customListName
         });
-        list.save();
-        res.redirect("/" + customListName);
+        list.save((err) => {
+          if (!err) {
+            res.redirect("/" + customListName);
+          }
+        });
       } else {
         res.render("list", {
           title: foundList.name,
@@ -95,18 +104,16 @@ app.post('/', (req, res) => {
     name: itemName
   });
 
-  if (listName === "Today") {
-    item.save(function() {
-      res.redirect("/");
-    });
-  } else {
-    List.findOne({name: listName}, (err, foundList) => {
-      foundList.items.push(item);
-      foundList.save(function() {
+  List.findOne({name: listName}, (err, foundList) => {
+    foundList.items.push(item);
+    foundList.save(function() {
+      if (listName === "Today") {
+        res.redirect("/");
+      } else {
         res.redirect("/" + listName);
-      });
+      }
     });
-  }
+  });
 
 });
 
@@ -115,20 +122,16 @@ app.post('/delete', (req, res) => {
   const itemId = req.body.checkbox;
   const listName = req.body.listName;
 
-  if (listName === "Today") {
-    Item.findByIdAndDelete(itemId, (err) => {
-      if (!err) {
-        console.log("Item was succesfylly deleted");
+  List.findOneAndUpdate({name: listName}, {$pull: {items: {_id: itemId}}}, (err, foundList) => {
+    if (!err) {
+      if (listName === "Today") {
         res.redirect("/");
-      }
-    });
-  } else {
-    List.findOneAndUpdate({name: listName}, {$pull: {items: {_id: itemId}}}, (err, foundList) => {
-      if (!err) {
+      } else {
         res.redirect("/" + listName);
       }
-    });
-  }
+      console.log("Item was succesfylly deleted");
+    }
+  });
 
 });
 
